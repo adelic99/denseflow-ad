@@ -73,13 +73,13 @@ class InvertibleDenseBlock(Transform):
         self.in_channels = in_channels
         self.growth_rate = growth_rate
 
-        self.noise_params = nn.ModuleList([])
+        self.noise_params = nn.ModuleList([]) # stavi none ako je gr=0
 
         units = []
         noise_in_chnls = self.compute_noise_inputs(in_channels, growth_rate, num_steps)
         for i in range(self.num_steps):
             chnls = int(in_channels + i * growth_rate)
-            if i != self.num_steps - 1:
+            if i != self.num_steps - 1 and growth_rate != 0:
                 self.noise_params.append(_BNReLUConv(noise_in_chnls[i], self.growth_rate))
 
             modules = [
@@ -109,7 +109,7 @@ class InvertibleDenseBlock(Transform):
     def cross_unit_coupling(self, x, g):
         # Cross-unit coupling
         N, _, H, W = x.shape
-        eta = self.noise_dist.sample(torch.Size([N, self.growth_rate, H, W])).to(x)
+        eta = self.noise_dist.sample(torch.Size([N, self.growth_rate, H, W])).to(x) #ako zelim bez augmentacije ulaza, growth_rate=0!
         mu, log_scale = g(x)
         eta_hat = mu + torch.exp(log_scale) * eta
         log_p = self.noise_dist.log_prob(eta)
@@ -122,8 +122,8 @@ class InvertibleDenseBlock(Transform):
         g_inputs = []
         x_in = x
         for i, block in enumerate(self.blocks.children()):
-            if i != 0:
-                g_in = torch.cat(g_inputs, dim=1)
+            if i != 0 and self.growth_rate != 0:
+                g_in = torch.cat(g_inputs, dim=1) # sto ovo radi? -od liste tenzor?
                 eta, delta_ll = self.cross_unit_coupling(g_in, self.noise_params[i-1])
                 g_inputs.append(x_in)
                 x_in = torch.cat((x_in, eta), dim=1)
@@ -142,6 +142,6 @@ class InvertibleDenseBlock(Transform):
         for i, block in enumerate(reversed(list(self.blocks.children()))):
 
             z = block.inverse(z)
-            if i != self.num_steps - 1:
+            if self.growth_rate != 0 and i != self.num_steps - 1:
                 z = z[:, :-self.growth_rate]
         return z

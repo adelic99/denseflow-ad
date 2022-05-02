@@ -37,8 +37,13 @@ class Flow(Distribution):
         log_prob = log_prob / self.coef
 
         if return_z:
-            return x, log_prob
+            return x, log_prob # x je latentna repr!
         return log_prob
+
+    def inverse_pass(self, z):
+        for transform in reversed(self.transforms):
+            z = transform.inverse(z)
+        return z
 
     def sample(self, num_samples):
         z = self.base_dist.sample(num_samples)

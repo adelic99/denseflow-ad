@@ -14,55 +14,60 @@ from model.model_flow import get_model, get_model_id, add_model_args
 # Optim
 from optim.expdecay_flow import get_optim, get_optim_id, add_optim_args
 
-###########
-## Setup ##
-###########
+if __name__ == '__main__':
 
-parser = argparse.ArgumentParser()
-add_exp_args(parser)
-add_data_args(parser)
-add_model_args(parser)
-add_optim_args(parser)
-args = parser.parse_args()
-set_seeds(args.seed)
 
-##################
-## Specify data ##
-##################
+    ###########
+    ## Setup ##
+    ###########
 
-train_loader, eval_loader, data_shape = get_data(args)
-data_id = get_data_id(args)
+    parser = argparse.ArgumentParser()
+    add_exp_args(parser)
+    add_data_args(parser)
+    add_model_args(parser)
+    add_optim_args(parser)
+    args = parser.parse_args()
+    set_seeds(args.seed)
 
-###################
-## Specify model ##
-###################
+    ##################
+    ## Specify data ##
+    ##################
 
-model = get_model(args, data_shape=data_shape)
-model_id = get_model_id(args)
+    # train_loader, eval_loader, data_shape = get_data(args)
+    train_loader, data_shape = get_data(args)
+    data_id = get_data_id(args)
 
-#######################
-## Specify optimizer ##
-#######################
+    ###################
+    ## Specify model ##
+    ###################
 
-optimizer, scheduler_iter, scheduler_epoch = get_optim(args, model)
-optim_id = get_optim_id(args)
+    model = get_model(args, data_shape=data_shape)
+    model_id = get_model_id(args)
 
-##############
-## Training ##
-##############
-print(args)
+    #######################
+    ## Specify optimizer ##
+    #######################
 
-torch.backends.cudnn.benchmark = True
+    optimizer, scheduler_iter, scheduler_epoch = get_optim(args, model)
+    optim_id = get_optim_id(args)
 
-exp = FlowExperiment(args=args,
-                     data_id=data_id,
-                     model_id=model_id,
-                     optim_id=optim_id,
-                     train_loader=train_loader,
-                     eval_loader=eval_loader,
-                     model=model,
-                     optimizer=optimizer,
-                     scheduler_iter=scheduler_iter,
-                     scheduler_epoch=scheduler_epoch)
+    ##############
+    ## Training ##
+    ##############
+    print(args)
 
-exp.run()
+    torch.backends.cudnn.benchmark = True
+
+    exp = FlowExperiment(args=args,
+                         data_id=data_id,
+                         model_id=model_id,
+                         optim_id=optim_id,
+                         train_loader=train_loader,
+                         # eval_loader=eval_loader,
+                         eval_loader=None,
+                         model=model,
+                         optimizer=optimizer,
+                         scheduler_iter=scheduler_iter,
+                         scheduler_epoch=scheduler_epoch)
+
+    exp.run()

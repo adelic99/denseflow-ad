@@ -1,6 +1,6 @@
 import torch
 from denseflow.distributions import DataParallelDistribution
-from denseflow.utils import elbo_bpd
+from denseflow.utils import elbo_bpd, latent
 from .utils import get_args_table, clean_dict
 from torchvision.utils import save_image
 import time
@@ -139,7 +139,19 @@ class FlowExperiment(BaseExperiment):
         t0 = time.time_ns()
         for x in self.train_loader:
             self.optimizer.zero_grad()
-            loss = elbo_bpd(self.model, x.to(self.args.device))
+
+            # loss = elbo_bpd(self.model, x.to(self.args.device))
+            z, loss = latent(self.model, x.to(self.args.device)) #forward pass
+
+            d = z.shape[1] // 2
+            z[:, d:, :, :] = 0 #postavi pola kanala na 0
+
+            x_hat = self.model.inverse_pass(z).float()
+            x_hat.requires_grad = True
+
+            reconstruction_error = torch.linalg.norm(x.float() - x_hat.detach().cpu())
+            loss += reconstruction_error
+
             loss.backward()
             if self.args.use_grad_norm > 0.:
                 grad_norm = torch.nn.utils.clip_grad.clip_grad_norm_(self.model.parameters(), self.args.use_grad_norm)

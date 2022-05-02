@@ -49,7 +49,7 @@ class DenseFlow(Flow):
                              current_shape[2])
 
             if i != len(block_config) - 1:
-                transforms.append(InvertibleTransition(current_shape[0]))
+                transforms.append(InvertibleTransition(current_shape[0])) # squeze and drop
 
                 d0 = dim_from_shape(current_shape)
 
