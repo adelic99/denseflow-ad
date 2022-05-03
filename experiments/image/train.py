@@ -33,8 +33,7 @@ if __name__ == '__main__':
     ## Specify data ##
     ##################
 
-    # train_loader, eval_loader, data_shape = get_data(args)
-    train_loader, data_shape = get_data(args)
+    train_loader, eval_loader, data_shape = get_data(args)
     data_id = get_data_id(args)
 
     ###################
@@ -63,8 +62,7 @@ if __name__ == '__main__':
                          model_id=model_id,
                          optim_id=optim_id,
                          train_loader=train_loader,
-                         # eval_loader=eval_loader,
-                         eval_loader=None,
+                         eval_loader=eval_loader,
                          model=model,
                          optimizer=optimizer,
                          scheduler_iter=scheduler_iter,

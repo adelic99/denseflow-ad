@@ -1,4 +1,5 @@
 import torch
+import math
 from denseflow.distributions import DataParallelDistribution
 from denseflow.utils import elbo_bpd, latent
 from .utils import get_args_table, clean_dict
@@ -141,7 +142,9 @@ class FlowExperiment(BaseExperiment):
             self.optimizer.zero_grad()
 
             # loss = elbo_bpd(self.model, x.to(self.args.device))
-            z, loss = latent(self.model, x.to(self.args.device)) #forward pass
+            z, log_prob = latent(self.model, x.to(self.args.device))
+            loss = - log_prob.mean()
+            l = - log_prob.sum() / (math.log(2) * x.shape.numel()) # ovo zato da mogu izraziti izglednost u bpd (?)
 
             d = z.shape[1] // 2
             z[:, d:, :, :] = 0 #postavi pola kanala na 0
@@ -149,7 +152,8 @@ class FlowExperiment(BaseExperiment):
             x_hat = self.model.inverse_pass(z).float()
             x_hat.requires_grad = True
 
-            reconstruction_error = torch.linalg.norm(x.float() - x_hat.detach().cpu())
+            # mozda stavi rec_error na 2
+            reconstruction_error = torch.linalg.norm(x.float() - x_hat.detach().cpu()) #je li ovo okej izracun l2 norme????
             loss += reconstruction_error
 
             loss.backward()
@@ -159,12 +163,11 @@ class FlowExperiment(BaseExperiment):
                 grad_norm = torch.zeros(1)
             self.optimizer.step()
             if self.scheduler_iter: self.scheduler_iter.step()
-            loss_sum += loss.detach().cpu().item() * len(x)
+            # loss_sum += loss.detach().cpu().item() * len(x)
+            loss_sum += l.detach().cpu().item() * len(x)
             loss_count += len(x)
-            print('Training. Epoch: {}/{}, Datapoint: {}/{}, Bits/dim: {:.3f} Grad Norm: {:.3f}'.format(epoch + 1,
-                                                                                                        self.args.epochs,
-                                                                                                        loss_count, len(
-                    self.train_loader.dataset), loss_sum / loss_count, grad_norm.item()), end='\r')
+            print(f'Training. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')
+
         print('')
         if self.scheduler_epoch: self.scheduler_epoch.step()
         t1 = time.time_ns()
@@ -177,10 +180,22 @@ class FlowExperiment(BaseExperiment):
             loss_sum = 0.0
             loss_count = 0
             for x in self.eval_loader:
-                loss = elbo_bpd(self.model, x.to(self.args.device))
-                loss_sum += loss.detach().cpu().item() * len(x)
+                # loss = elbo_bpd(self.model, x.to(self.args.device))
+                z, log_prob = latent(self.model, x.to(self.args.device))
+                loss = - log_prob.mean()
+                l = - log_prob.sum() / (math.log(2) * x.shape.numel())
+
+                d = z.shape[1] // 2
+                z[:, d:, :, :] = 0  # postavi pola kanala na 0
+
+                x_hat = self.model.inverse_pass(z).float()
+
+                reconstruction_error = torch.linalg.norm(x.float() - x_hat.detach().cpu())
+                loss += reconstruction_error
+
+                loss_sum += l.detach().cpu().item() * len(x)
                 loss_count += len(x)
-                print('Evaluating. Epoch: {}/{}, Datapoint: {}/{}, Bits/dim: {:.3f}'.format(epoch+1, self.args.epochs, loss_count, len(self.eval_loader.dataset), loss_sum/loss_count), end='\r')
+                print(f'Training. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')
             print('')
             # samples = self.model.sample(64)
             # samples = samples / 255.
