@@ -43,6 +43,9 @@ class Flow(Distribution):
     def inverse_pass(self, z):
         for transform in reversed(self.transforms):
             z = transform.inverse(z)
+            if not z.requires_grad:
+                z = z.float()
+                z.requires_grad = True
         return z
 
     def sample(self, num_samples):

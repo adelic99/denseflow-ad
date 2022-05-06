@@ -149,11 +149,10 @@ class FlowExperiment(BaseExperiment):
             d = z.shape[1] // 2
             z[:, d:, :, :] = 0 #postavi pola kanala na 0
 
-            x_hat = self.model.inverse_pass(z).float()
-            x_hat.requires_grad = True
+            x_hat = self.model.inverse_pass(z)
 
             # mozda stavi rec_error na 2
-            reconstruction_error = torch.linalg.norm(x.float() - x_hat.detach().cpu()) #je li ovo okej izracun l2 norme????
+            reconstruction_error = torch.linalg.norm(x.float() - x_hat.cpu()) #je li ovo okej izracun l2 norme????
             loss += reconstruction_error
 
             loss.backward()
