@@ -141,28 +141,29 @@ class FlowExperiment(BaseExperiment):
         for x in self.train_loader:
             self.optimizer.zero_grad()
 
-            # loss = elbo_bpd(self.model, x.to(self.args.device))
             z, log_prob = latent(self.model, x.to(self.args.device))
             loss = - log_prob.mean()
+            loss.backward()
+
             l = - log_prob.sum() / (math.log(2) * x.shape.numel()) # ovo zato da mogu izraziti izglednost u bpd (?)
 
             d = z.shape[1] // 2
             z[:, d:, :, :] = 0 #postavi pola kanala na 0
 
             x_hat = self.model.inverse_pass(z)
+            print(x_hat.requires_grad)
 
             # mozda stavi rec_error na 2
             reconstruction_error = torch.linalg.norm(x.float().to(self.args.device) - x_hat) #je li ovo okej izracun l2 norme????
             loss += reconstruction_error
+            (self.args.beta * reconstruction_error).backward()
 
-            loss.backward()
             if self.args.use_grad_norm > 0.:
                 grad_norm = torch.nn.utils.clip_grad.clip_grad_norm_(self.model.parameters(), self.args.use_grad_norm)
             else:
                 grad_norm = torch.zeros(1)
             self.optimizer.step()
             if self.scheduler_iter: self.scheduler_iter.step()
-            # loss_sum += loss.detach().cpu().item() * len(x)
             loss_sum += l.detach().cpu().item() * len(x)
             loss_count += len(x)
             print(f'Training. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')

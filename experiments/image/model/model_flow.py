@@ -8,6 +8,7 @@ def add_model_args(parser):
     parser.add_argument('--block_conf', nargs='+', type=int)
     parser.add_argument('--layer_mid_chnls', nargs='+', type=int)
     parser.add_argument('--layers_conf', nargs='+', type=int)
+    parser.add_argument('--beta', type=float, default=100)
 
 
 def get_model_id(args):
@@ -18,4 +19,4 @@ def get_model(args, data_shape):
 
     return DenseFlow(
         data_shape=data_shape, block_config=args.block_conf, layers_config=args.layers_conf,
-        layer_mid_chnls=args.layer_mid_chnls, growth_rate=args.growth_rate, checkpointing=args.checkpointing)
+        layer_mid_chnls=args.layer_mid_chnls, growth_rate=args.growth_rate,  checkpointing=args.checkpointing)

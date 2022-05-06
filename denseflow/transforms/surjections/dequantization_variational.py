@@ -54,4 +54,4 @@ class VariationalDequantization(Surjection):
 
     def inverse(self, z):
         z = self.quantization_bins * z
-        return z.floor().clamp(min=0, max=self.quantization_bins-1).long()
+        return z.floor().clamp(min=0, max=self.quantization_bins-1)
