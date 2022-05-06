@@ -152,7 +152,7 @@ class FlowExperiment(BaseExperiment):
             x_hat = self.model.inverse_pass(z)
 
             # mozda stavi rec_error na 2
-            reconstruction_error = torch.linalg.norm(x.float() - x_hat.cpu()) #je li ovo okej izracun l2 norme????
+            reconstruction_error = torch.linalg.norm(x.float().to(self.args.device) - x_hat) #je li ovo okej izracun l2 norme????
             loss += reconstruction_error
 
             loss.backward()
