@@ -180,7 +180,6 @@ class FlowExperiment(BaseExperiment):
             loss_sum = 0.0
             loss_count = 0
             for x in self.eval_loader:
-                # loss = elbo_bpd(self.model, x.to(self.args.device))
                 z, log_prob = latent(self.model, x.to(self.args.device))
                 loss = - log_prob.mean()
                 l = - log_prob.sum() / (math.log(2) * x.shape.numel())
@@ -188,14 +187,14 @@ class FlowExperiment(BaseExperiment):
                 d = z.shape[1] // 2
                 z[:, d:, :, :] = 0  # postavi pola kanala na 0
 
-                x_hat = self.model.inverse_pass(z).float()
+                x_hat = self.model.inverse_pass(z)
 
-                reconstruction_error = torch.linalg.norm(x.float() - x_hat.detach().cpu())
+                reconstruction_error = torch.linalg.norm(x.to(self.args.device) - x_hat)
                 loss += reconstruction_error
 
                 loss_sum += l.detach().cpu().item() * len(x)
                 loss_count += len(x)
-                print(f'Training. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')
+                print(f'Evaluating. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')
             print('')
             # samples = self.model.sample(64)
             # samples = samples / 255.
