@@ -1,5 +1,6 @@
 import torch
 import math
+import numpy as np
 from denseflow.distributions import DataParallelDistribution
 from denseflow.utils import elbo_bpd, latent
 from .utils import get_args_table, clean_dict
@@ -48,7 +49,7 @@ class FlowExperiment(BaseExperiment):
     def __init__(self, args,
                  data_id, model_id, optim_id,
                  train_loader, eval_loader,
-                 model, optimizer, scheduler_iter, scheduler_epoch):
+                 model, model_h, optimizer, scheduler_iter, scheduler_epoch):
 
         # Edit args
         if args.eval_every is None:
@@ -65,9 +66,12 @@ class FlowExperiment(BaseExperiment):
         if args.parallel == 'dp':
             model = DataParallelDistribution(model)
 
+        model_h = model_h.to(args.device)
+
         # Init parent
         log_path = os.path.join(self.log_base, data_id, model_id, optim_id, args.name)
         super(FlowExperiment, self).__init__(model=model,
+                                             model_h=model_h,
                                              optimizer=optimizer,
                                              scheduler_iter=scheduler_iter,
                                              scheduler_epoch=scheduler_epoch,
@@ -141,20 +145,31 @@ class FlowExperiment(BaseExperiment):
         for x in self.train_loader:
             self.optimizer.zero_grad()
 
-            z, log_prob = latent(self.model, x.to(self.args.device))
-            loss = - log_prob.mean()
-            loss.backward()
+            noise = np.sqrt(self.args.sig2) * torch.randn(x.shape, device=self.args.device, requires_grad=False).to(self.args.device)
+            x_tilde = x.to(self.args.device) + noise
 
-            l = - log_prob.sum() / (math.log(2) * x.shape.numel()) # ovo zato da mogu izraziti izglednost u bpd (?)
+            z, log_prob = latent(self.model, x_tilde) #z.shape = ([32, 48, 8, 8])
+
+            loss = - log_prob.mean()
+            # loss.backward()
+            l = - log_prob.sum() / (math.log(2) * x_tilde.shape.numel())
 
             d = z.shape[1] // 2
-            z[:, d:, :, :] = 0 #postavi pola kanala na 0
+            u = z[:, :d, :, :]
+            v = z[:, d:, :, :]
 
-            x_hat = self.model.inverse_pass(z)
-            print(x_hat.requires_grad)
+            u_transformed, log_prob_h = latent(self.model_h, u)
+            loss_h = - log_prob_h.mean()
+            loss += loss_h
+            loss.backward()
+            l += - log_prob_h.sum() / (math.log(2) * u.shape.numel())
 
-            # mozda stavi rec_error na 2
-            reconstruction_error = torch.linalg.norm(x.float().to(self.args.device) - x_hat) #je li ovo okej izracun l2 norme????
+            u_inversed = self.model_h.inverse_pass(u)
+            u_padded = torch.cat((u_inversed, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)), dim=1)
+
+            x_hat = self.model.inverse_pass(u_padded)
+
+            reconstruction_error = torch.linalg.norm(x.to(self.args.device) - x_hat)
             loss += reconstruction_error
             (self.args.beta * reconstruction_error).backward()
 
@@ -180,14 +195,31 @@ class FlowExperiment(BaseExperiment):
             loss_sum = 0.0
             loss_count = 0
             for x in self.eval_loader:
-                z, log_prob = latent(self.model, x.to(self.args.device))
+                noise = np.sqrt(self.args.sig2) * torch.randn(x.shape, device=self.args.device, requires_grad=False).to(
+                    self.args.device)
+                x_tilde = x.to(self.args.device) + noise
+
+                z, log_prob = latent(self.model, x_tilde)  # z.shape = ([32, 48, 8, 8])
+
                 loss = - log_prob.mean()
-                l = - log_prob.sum() / (math.log(2) * x.shape.numel())
+                # loss.backward()
+                l = - log_prob.sum() / (math.log(2) * x_tilde.shape.numel())
 
                 d = z.shape[1] // 2
-                z[:, d:, :, :] = 0  # postavi pola kanala na 0
+                u = z[:, :d, :, :]
+                v = z[:, d:, :, :]
 
-                x_hat = self.model.inverse_pass(z)
+                u_transformed, log_prob_h = latent(self.model_h, u)
+                loss_h = - log_prob_h.mean()
+                loss += loss_h
+                l += - log_prob_h.sum() / (math.log(2) * u.shape.numel())
+
+                u_inversed = self.model_h.inverse_pass(u)
+                u_padded = torch.cat(
+                    (u_inversed, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)),
+                    dim=1)
+
+                x_hat = self.model.inverse_pass(u_padded)
 
                 reconstruction_error = torch.linalg.norm(x.to(self.args.device) - x_hat)
                 loss += reconstruction_error

@@ -9,7 +9,7 @@ from experiment.baseline_flow import FlowExperiment, add_exp_args
 from data.data import get_data, get_data_id, add_data_args
 
 # Model
-from model.model_flow import get_model, get_model_id, add_model_args
+from model.model_flow import get_model, get_model_id, add_model_args, get_model_h
 
 # Optim
 from optim.expdecay_flow import get_optim, get_optim_id, add_optim_args
@@ -43,6 +43,8 @@ if __name__ == '__main__':
     model = get_model(args, data_shape=data_shape)
     model_id = get_model_id(args)
 
+    model_h = get_model_h(args, data_shape=(24, 8, 8)) #dohvati dimenzije iz model...
+
     #######################
     ## Specify optimizer ##
     #######################
@@ -64,6 +66,7 @@ if __name__ == '__main__':
                          train_loader=train_loader,
                          eval_loader=eval_loader,
                          model=model,
+                         model_h=model_h,
                          optimizer=optimizer,
                          scheduler_iter=scheduler_iter,
                          scheduler_epoch=scheduler_epoch)

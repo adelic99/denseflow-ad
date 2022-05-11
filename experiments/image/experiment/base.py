@@ -6,11 +6,12 @@ from .utils import get_args_table, get_metric_table
 
 class BaseExperiment(object):
 
-    def __init__(self, model, optimizer, scheduler_iter, scheduler_epoch,
+    def __init__(self, model, model_h, optimizer, scheduler_iter, scheduler_epoch,
                  log_path, eval_every, check_every):
 
         # Objects
         self.model = model
+        self.model_h = model_h
         self.optimizer = optimizer
         self.scheduler_iter = scheduler_iter
         self.scheduler_epoch = scheduler_epoch
