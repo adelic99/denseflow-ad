@@ -99,6 +99,7 @@ class BaseExperiment(object):
                       'eval_metrics': self.eval_metrics,
                       'eval_epochs': self.eval_epochs,
                       'model': self.model.state_dict(),
+                      'model_h': self.model_h.state_dict(),
                       'optimizer': self.optimizer.state_dict(),
                       'scheduler_iter': self.scheduler_iter.state_dict() if self.scheduler_iter else None,
                       'scheduler_epoch': self.scheduler_epoch.state_dict() if self.scheduler_epoch else None}
@@ -111,6 +112,7 @@ class BaseExperiment(object):
         self.eval_metrics = checkpoint['eval_metrics']
         self.eval_epochs = checkpoint['eval_epochs']
         self.model.load_state_dict(checkpoint['model'])
+        self.model_h.load_state_dict(checkpoint['model_h'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         if self.scheduler_iter: self.scheduler_iter.load_state_dict(checkpoint['scheduler_iter'])
         if self.scheduler_epoch: self.scheduler_epoch.load_state_dict(checkpoint['scheduler_epoch'])

@@ -42,11 +42,11 @@ class CelebADataset(data.Dataset):
         self.split = split
         self.transform = transform
 
-        if not self._check_raw():
-            raise RuntimeError('Dataset not found.\n\nFrom docstring:\n\n' + self.__doc__)
-
-        if not self._check_processed():
-            self.process()
+        # if not self._check_raw():
+        #     raise RuntimeError('Dataset not found.\n\nFrom docstring:\n\n' + self.__doc__)
+        #
+        # if not self._check_processed():
+        #     self.process()
 
         if self.split=='train':
             self.data = torch.load(self.processed_train_file)
