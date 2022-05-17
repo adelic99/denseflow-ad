@@ -32,7 +32,8 @@ class Flow(Distribution):
             x, ldj = transform(x)
             log_prob += ldj
         # log_prob = log_prob / self.base_dist.scale
-        log_prob += self.base_dist.log_prob(x)
+        d = x.shape[1] // 2
+        log_prob += self.base_dist.log_prob(x[:, :d, :, :])
         log_prob = log_prob / self.coef
 
         if return_z:

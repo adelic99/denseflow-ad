@@ -64,6 +64,10 @@ class DenseFlow(Flow):
         # transforms = [UniformDequantization(num_bits=num_bits, coef=coef), *transforms]
         transforms = [VariationalDequantization(encoder=DequantizationFlow(data_shape, num_bits=num_bits), num_bits=num_bits, coef=coef), *transforms]
 
+        current_shape = (current_shape[0] // 2,
+                         current_shape[1],
+                         current_shape[2])
+
         super(DenseFlow, self).__init__(base_dist=ConvNormal2d(current_shape),
                                        transforms=transforms, coef=coef)
         self.out_shape = current_shape

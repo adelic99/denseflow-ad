@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from denseflow.flows import Flow, Flow_2
+from denseflow.flows import Flow_2
 from denseflow.transforms import UniformDequantization, VariationalDequantization, ScalarAffineBijection, Squeeze2d, Conv1x1, Slice, SimpleMaxPoolSurjection2d, ActNormBijection2d, WaveletSqueeze2d
 from denseflow.distributions import StandardNormal, ConvNormal2d
 from .flow_modules import InvertibleDenseBlock, InvertibleTransition
@@ -36,8 +36,6 @@ class HFlow(Flow_2):
 
         dim_output += dim_from_shape(current_shape)
         coef = 1.
-        # transforms = [UniformDequantization(num_bits=num_bits, coef=coef), *transforms]
-        # transforms = [VariationalDequantization(encoder=DequantizationFlow(data_shape, num_bits=num_bits), num_bits=num_bits, coef=coef), *transforms]
 
         super(HFlow, self).__init__(base_dist=ConvNormal2d(current_shape),
                                        transforms=transforms, coef=coef)

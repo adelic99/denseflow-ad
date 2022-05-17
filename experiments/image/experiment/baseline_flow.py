@@ -164,8 +164,7 @@ class FlowExperiment(BaseExperiment):
             loss.backward()
             l += - log_prob_h.sum() / (math.log(2) * u.shape.numel())
 
-            u_inversed = self.model_h.inverse_pass(u)
-            u_padded = torch.cat((u_inversed, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)), dim=1)
+            u_padded = torch.cat((u, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)), dim=1)
 
             x_hat = self.model.inverse_pass(u_padded)
 
@@ -195,14 +194,12 @@ class FlowExperiment(BaseExperiment):
             loss_sum = 0.0
             loss_count = 0
             for x in self.eval_loader:
-                noise = np.sqrt(self.args.sig2) * torch.randn(x.shape, device=self.args.device, requires_grad=False).to(
-                    self.args.device)
+                noise = np.sqrt(self.args.sig2) * torch.randn(x.shape, device=self.args.device, requires_grad=False).to(self.args.device)
                 x_tilde = x.to(self.args.device) + noise
 
                 z, log_prob = latent(self.model, x_tilde)  # z.shape = ([32, 48, 8, 8])
 
                 loss = - log_prob.mean()
-                # loss.backward()
                 l = - log_prob.sum() / (math.log(2) * x_tilde.shape.numel())
 
                 d = z.shape[1] // 2
@@ -214,10 +211,7 @@ class FlowExperiment(BaseExperiment):
                 loss += loss_h
                 l += - log_prob_h.sum() / (math.log(2) * u.shape.numel())
 
-                u_inversed = self.model_h.inverse_pass(u)
-                u_padded = torch.cat(
-                    (u_inversed, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)),
-                    dim=1)
+                u_padded = torch.cat((u, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)), dim=1)
 
                 x_hat = self.model.inverse_pass(u_padded)
 
@@ -226,7 +220,7 @@ class FlowExperiment(BaseExperiment):
 
                 loss_sum += l.detach().cpu().item() * len(x)
                 loss_count += len(x)
-                print(f'Evaluating. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')
+                print(f'Evaluating. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.eval_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')
             print('')
             # samples = self.model.sample(64)
             # samples = samples / 255.

@@ -4,6 +4,7 @@ import torch
 import pickle
 import argparse
 import torchvision.utils as vutils
+import matplotlib.pyplot as plt
 
 # Data
 from data.data import get_data, get_data_id, add_data_args
@@ -66,5 +67,22 @@ model = model.to(device)
 model = model.eval()
 if eval_args.double: model = model.double()
 
-samples = model.sample(eval_args.samples).cpu().float()/(2**args.num_bits - 1)
-vutils.save_image(samples, fp=path_samples, nrow=eval_args.nrow)
+samples = []
+batchsize = 64
+name = 0
+while len(samples) < eval_args.samples:
+    n = min(batchsize, eval_args.samples - len(samples))
+
+    x_gen = (model.sample(n).cpu().float() / (2 ** args.num_bits - 1)).detach().numpy()
+
+    for im in x_gen:
+        im = im.transpose(1, 2, 0)
+        plt.imsave(f'{eval_args.model}/samples/sample_{name}.jpg', im)
+        name += 1
+    samples += list(x_gen)
+
+# samples = model.sample(eval_args.samples).cpu().float()/(2**args.num_bits - 1)
+# vutils.save_image(samples, fp=path_samples, nrow=eval_args.nrow)
+# for i, im in enumerate(samples):
+#     im = im.transpose(1, 2, 0)
+#     plt.imsave(f'{eval_args.model}/samples/sample_{i}.jpg', im)
