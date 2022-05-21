@@ -21,15 +21,16 @@ def get_optim_id(args):
     return 'expdecay'
 
 
-def get_optim(args, model):
+def get_optim(args, model, model_h):
     assert args.optimizer in optim_choices
 
+    params = list(model.parameters()) + list(model_h.parameters())
     if args.optimizer == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
+        optimizer = optim.SGD(params, lr=args.lr, momentum=args.momentum)
     elif args.optimizer == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr, betas=(args.momentum, args.momentum_sqr))
+        optimizer = optim.Adam(params, lr=args.lr, betas=(args.momentum, args.momentum_sqr))
     elif args.optimizer == 'adamax':
-        optimizer = optim.Adamax(model.parameters(), lr=args.lr, betas=(args.momentum, args.momentum_sqr))
+        optimizer = optim.Adamax(params, lr=args.lr, betas=(args.momentum, args.momentum_sqr))
 
     if args.warmup is not None:
         scheduler_iter = LinearWarmupScheduler(optimizer, total_epoch=args.warmup)

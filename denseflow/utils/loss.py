@@ -29,7 +29,6 @@ def elbo_bpd(model, x):
 
 def latent(model, x):
     z, log_prob = model.log_prob(x, return_z=True)
-    # return z, - log_prob.mean()
     return z, log_prob
 
 

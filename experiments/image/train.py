@@ -43,7 +43,7 @@ if __name__ == '__main__':
     model = get_model(args, data_shape=data_shape)
     model_id = get_model_id(args)
 
-    model_h = get_model_h(args, data_shape=(24, 8, 8)) #dohvati dimenzije iz model...
+    model_h = get_model_h(args, data_shape=model.out_shape)
 
     #######################
     ## Specify optimizer ##

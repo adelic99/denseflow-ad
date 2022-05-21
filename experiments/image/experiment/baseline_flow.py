@@ -141,18 +141,16 @@ class FlowExperiment(BaseExperiment):
         self.model.train()
         loss_sum = 0.0
         loss_count = 0
+        loss_sum_h = 0.0
+        loss_count_h = 0
         t0 = time.time_ns()
         for x in self.train_loader:
             self.optimizer.zero_grad()
 
-            noise = np.sqrt(self.args.sig2) * torch.randn(x.shape, device=self.args.device, requires_grad=False).to(self.args.device)
-            x_tilde = x.to(self.args.device) + noise
-
-            z, log_prob = latent(self.model, x_tilde) #z.shape = ([32, 48, 8, 8])
+            z, log_prob = latent(self.model, x.to(self.args.device))
 
             loss = - log_prob.mean()
-            # loss.backward()
-            l = - log_prob.sum() / (math.log(2) * x_tilde.shape.numel())
+            l = - log_prob.sum() / (math.log(2) * x.shape.numel())
 
             d = z.shape[1] // 2
             u = z[:, :d, :, :]
@@ -162,7 +160,7 @@ class FlowExperiment(BaseExperiment):
             loss_h = - log_prob_h.mean()
             loss += loss_h
             loss.backward()
-            l += - log_prob_h.sum() / (math.log(2) * u.shape.numel())
+            l_h = - log_prob_h.sum() / (math.log(2) * u.shape.numel())
 
             u_padded = torch.cat((u, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)), dim=1)
 
@@ -180,7 +178,9 @@ class FlowExperiment(BaseExperiment):
             if self.scheduler_iter: self.scheduler_iter.step()
             loss_sum += l.detach().cpu().item() * len(x)
             loss_count += len(x)
-            print(f'Training. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')
+            loss_sum_h += l_h.detach().cpu().item() * len(u)
+            loss_count_h += len(u)
+            print(f'Training. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}, Bits/dim h: {loss_sum_h / loss_count_h}')
 
         print('')
         if self.scheduler_epoch: self.scheduler_epoch.step()
@@ -193,14 +193,13 @@ class FlowExperiment(BaseExperiment):
         with torch.no_grad():
             loss_sum = 0.0
             loss_count = 0
+            loss_sum_h = 0.0
+            loss_count_h = 0
             for x in self.eval_loader:
-                noise = np.sqrt(self.args.sig2) * torch.randn(x.shape, device=self.args.device, requires_grad=False).to(self.args.device)
-                x_tilde = x.to(self.args.device) + noise
-
-                z, log_prob = latent(self.model, x_tilde)  # z.shape = ([32, 48, 8, 8])
+                z, log_prob = latent(self.model, x.to(self.args.device))
 
                 loss = - log_prob.mean()
-                l = - log_prob.sum() / (math.log(2) * x_tilde.shape.numel())
+                l = - log_prob.sum() / (math.log(2) * x.shape.numel())
 
                 d = z.shape[1] // 2
                 u = z[:, :d, :, :]
@@ -209,7 +208,7 @@ class FlowExperiment(BaseExperiment):
                 u_transformed, log_prob_h = latent(self.model_h, u)
                 loss_h = - log_prob_h.mean()
                 loss += loss_h
-                l += - log_prob_h.sum() / (math.log(2) * u.shape.numel())
+                l_h = - log_prob_h.sum() / (math.log(2) * u.shape.numel())
 
                 u_padded = torch.cat((u, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)), dim=1)
 
@@ -220,7 +219,9 @@ class FlowExperiment(BaseExperiment):
 
                 loss_sum += l.detach().cpu().item() * len(x)
                 loss_count += len(x)
-                print(f'Evaluating. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.eval_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}')
+                loss_sum_h += l_h.detach().cpu().item() * len(u)
+                loss_count_h += len(u)
+                print(f'Evaluating. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.eval_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}, Bits/dim h: {loss_sum_h / loss_count_h}')
             print('')
             # samples = self.model.sample(64)
             # samples = samples / 255.
