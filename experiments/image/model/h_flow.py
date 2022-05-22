@@ -33,6 +33,19 @@ class HFlow(Flow_2):
                                         growth_rate=growth_rate, checkpointing=checkpointing)
             transforms.append(idbt)
 
+            chnls = current_shape[0] + growth_rate * (num_layers - 1)
+            current_shape = (chnls,
+                             current_shape[1],
+                             current_shape[2])
+            if i != len(block_config) - 1:
+                transforms.append(InvertibleTransition(current_shape[0])) # squeze and drop
+                d0 = dim_from_shape(current_shape)
+                current_shape = (current_shape[0] * 2,
+                                 current_shape[1] // 2,
+                                 current_shape[2] // 2)
+                d1 = dim_from_shape(current_shape)
+                dim_output += (d0 - d1)
+
 
         dim_output += dim_from_shape(current_shape)
         coef = 1.

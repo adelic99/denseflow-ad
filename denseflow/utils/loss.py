@@ -75,17 +75,28 @@ def dataset_elbo_nats(model, data_loader, device, double=False, verbose=True):
     return nats / count
 
 
-def dataset_elbo_bpd(model, data_loader, device, double=False, verbose=True):
+def dataset_elbo_bpd(model, model_h, data_loader, device, double=False, verbose=True):
     with torch.no_grad():
         bpd = 0.0
+        bpd_h = 0.0
         count = 0
+        count_h = 0
         for i, x in enumerate(data_loader):
             if double: x = x.double()
             x = x.to(device)
-            bpd += elbo_bpd(model, x).cpu().item() * len(x)
+            z, log_prob = latent(model, x)
+            bpd += (- log_prob.sum() / (math.log(2) * x.shape.numel())).cpu().item() * len(x)
             count += len(x)
+
+            d = z.shape[1] // 2
+            u = z[:, :d, :, :]
+            u_transformed, log_prob_h = latent(model_h, u)
+            bpd_h = (- log_prob_h.sum() / (math.log(2) * u.shape.numel())).cpu().item() * len(u)
+            count_h += len(u)
+
             if verbose: print('{}/{}'.format(i+1, len(data_loader)), bpd/count, end='\r')
-    return bpd / count
+    return bpd / count, bpd_h/count_h
+
 
 def dataset_iwbo_nats(model, data_loader, k, device, double=False, kbs=None, verbose=True):
     with torch.no_grad():

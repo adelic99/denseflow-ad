@@ -10,7 +10,7 @@ from denseflow.utils import dataset_elbo_bpd, dataset_iwbo_bpd
 from data.data import get_data, get_data_id, add_data_args
 
 # Model
-from model.model_flow import get_model, get_model_id, add_model_args
+from model.model_flow import get_model, get_model_id, add_model_args, get_model_h
 from denseflow.distributions import DataParallelDistribution
 
 ###########
@@ -52,10 +52,12 @@ args.batch_size = eval_args.batch_size
 ###################
 
 model = get_model(args, data_shape=data_shape)
+model_h = get_model_h(args, data_shape=model.out_shape)
 if args.parallel == 'dp':
     model = DataParallelDistribution(model)
 checkpoint = torch.load(path_check)
 model.load_state_dict(checkpoint['model'])
+model_h.load_state_dict(checkpoint['model_h'])
 print('Loaded weights for model at {}/{} epochs'.format(checkpoint['current_epoch'], args.epochs))
 
 ############
@@ -65,11 +67,13 @@ print('Loaded weights for model at {}/{} epochs'.format(checkpoint['current_epoc
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model = model.to(device)
 model = model.eval()
+model_h = model_h.to(device)
+model_h = model_h.eval()
 if eval_args.double: model = model.double()
 
 if eval_args.k is None:
     eval_str = 'elbo'
-    bpd = dataset_elbo_bpd(model, eval_loader, device=device, double=eval_args.double)
+    bpd = dataset_elbo_bpd(model, model_h, eval_loader, device=device, double=eval_args.double)
 else:
     eval_str = 'iwbo{}'.format(eval_args.k)
     bpd = dataset_iwbo_bpd(model, eval_loader, k=eval_args.k, kbs=eval_args.kbs, device=device, double=eval_args.double)

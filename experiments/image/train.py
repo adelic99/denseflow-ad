@@ -49,7 +49,7 @@ if __name__ == '__main__':
     ## Specify optimizer ##
     #######################
 
-    optimizer, scheduler_iter, scheduler_epoch = get_optim(args, model)
+    optimizer, scheduler_iter, scheduler_epoch = get_optim(args, model, model_h)
     optim_id = get_optim_id(args)
 
     ##############

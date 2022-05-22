@@ -51,6 +51,12 @@ class Flow(Distribution):
             z = transform.inverse(z)
         return z
 
+    def sample_from_u(self, u, device):
+        z = torch.cat((u, torch.zeros(u.shape[0], u.shape[1], u.shape[2], u.shape[3]).to(device)), dim=1)
+        for transform in reversed(self.transforms):
+            z = transform.inverse(z)
+        return z
+
     def sample_with_log_prob(self, num_samples):
         raise RuntimeError("Flow does not support sample_with_log_prob, see InverseFlow instead.")
 
@@ -96,7 +102,6 @@ class Flow_2(Distribution):
 
     def sample(self, num_samples):
         z = self.base_dist.sample(num_samples)
-        # !
         for transform in reversed(self.transforms):
             z = transform.inverse(z)
         return z
