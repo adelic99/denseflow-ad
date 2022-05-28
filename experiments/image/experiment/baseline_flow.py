@@ -139,9 +139,9 @@ class FlowExperiment(BaseExperiment):
 
     def train_fn(self, epoch):
         self.model.train()
+        self.model_h.train()
         loss_sum = 0.0
         loss_count = 0
-        loss_sum_h = 0.0
         t0 = time.time_ns()
         for x in self.train_loader:
             self.optimizer.zero_grad()
@@ -156,10 +156,9 @@ class FlowExperiment(BaseExperiment):
             v = z[:, d:, :, :]
 
             u_transformed, log_prob_h = latent(self.model_h, u)
-            loss_h = - log_prob_h.mean()
-            loss += loss_h
+            loss += - log_prob_h.mean()
             loss.backward()
-            l_h = - log_prob_h.sum() / (math.log(2) * u.shape.numel())
+            l += - log_prob_h.sum() / (math.log(2) * u.shape.numel())
 
             u_padded = torch.cat((u, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)), dim=1)
 
@@ -175,11 +174,9 @@ class FlowExperiment(BaseExperiment):
                 grad_norm = torch.zeros(1)
             self.optimizer.step()
             if self.scheduler_iter: self.scheduler_iter.step()
-            if loss < 100000:
-                loss_sum += l.detach().cpu().item() * len(x)
-                loss_count += len(x)
-                loss_sum_h += l_h.detach().cpu().item() * len(u)
-                print(f'Training. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}, Bits/dim h: {loss_sum_h / loss_count}, Reco_err: {reconstruction_error}')
+            loss_sum += l.detach().cpu().item() * len(x)
+            loss_count += len(x)
+            print(f'Training. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.train_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}, Reco_err: {reconstruction_error}')
 
         print('')
         if self.scheduler_epoch: self.scheduler_epoch.step()
@@ -189,10 +186,10 @@ class FlowExperiment(BaseExperiment):
 
     def eval_fn(self, epoch):
         self.model.eval()
+        self.model_h.eval()
         with torch.no_grad():
             loss_sum = 0.0
             loss_count = 0
-            loss_sum_h = 0.0
             for x in self.eval_loader:
                 z, log_prob = latent(self.model, x.to(self.args.device))
 
@@ -204,9 +201,9 @@ class FlowExperiment(BaseExperiment):
                 v = z[:, d:, :, :]
 
                 u_transformed, log_prob_h = latent(self.model_h, u)
-                loss_h = - log_prob_h.mean()
+                loss += - log_prob_h.mean()
                 loss += loss_h
-                l_h = - log_prob_h.sum() / (math.log(2) * u.shape.numel())
+                l += - log_prob_h.sum() / (math.log(2) * u.shape.numel())
 
                 u_padded = torch.cat((u, torch.zeros(z.shape[0], z.shape[1] // 2, z.shape[2], z.shape[3]).to(self.args.device)), dim=1)
 
@@ -216,9 +213,8 @@ class FlowExperiment(BaseExperiment):
                 loss += self.args.beta * reconstruction_error
 
                 loss_sum += l.detach().cpu().item() * len(x)
-                loss_sum_h += l_h.detach().cpu().item() * len(x)
                 loss_count += len(x)
-                print(f'Evaluating. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.eval_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}, Bits/dim h: {loss_sum_h / loss_count}, Reco_err: {reconstruction_error}')
+                print(f'Evaluating. Epoch: {epoch + 1}/{self.args.epochs}, Datapoint: {loss_count}/{len(self.eval_loader.dataset)}, Loss: {loss}, Bits/dim: {loss_sum / loss_count}, Reco_err: {reconstruction_error}')
 
             print('')
             # samples = self.model.sample(64)
